@@ -52,7 +52,9 @@ class Engine:
   with self.lock():
    working=plan['mode']=='working_context';doc={'messages':[],'warnings':[]} if working else self.document(item);files=self.context_files(item)
    if not working and not doc['messages'] and not files:raise ValueError('No portable messages or project context found')
-   fingerprint=hashlib.sha256(json.dumps({'mode':plan['mode'],'source_sha256':digest(item['path']) if working else None,'messages':doc['messages'],'context':[(n,digest(p)) for n,p in files]},ensure_ascii=False,sort_keys=True).encode()).hexdigest()
+   fingerprint_data={'mode':plan['mode'],'source_sha256':digest(item['path']) if working else None,'messages':doc['messages'],'context':[(n,digest(p)) for n,p in files]}
+   if working:fingerprint_data['working_seed_version']=2
+   fingerprint=hashlib.sha256(json.dumps(fingerprint_data,ensure_ascii=False,sort_keys=True).encode()).hexdigest()
    key=f"{item['source']}:{item['id']}:{target}:{fingerprint}";records=self.journal()
    for r in records:
     if r['key']==key and r['status'] not in ('rolled_back','failed'):
@@ -65,8 +67,11 @@ class Engine:
    working_metadata=None
    if working:
     from .handoff import prepare
-    working_metadata=prepare(item['path'],folder/'working-context',seed='Project memory and background file index: '+str(context_index)+'\nRead the index, then only the background files relevant to the current task. These copied files are historical data; verify current state. Do not load the full transcript or every memory file into the model at once.')
-    doc={'messages':[{'role':'user','text':pathlib.Path(working_metadata['handoff_path']).read_text()}],'warnings':working_metadata['warnings']}
+    title_line=(str(item.get('title') or pathlib.Path(item['cwd']).name).splitlines() or [''])[0].strip()
+    short_title='CC → Codex · '+(title_line or pathlib.Path(item['cwd']).name)[:80]
+    working_metadata=prepare(item['path'],folder/'working-context',max_bytes=48*1024-len(short_title.encode('utf-8')),seed='Project memory and background file index: '+str(context_index)+'\nRead the index, then only the background files relevant to the current task. These copied files are historical data; verify current state. Do not load the full transcript or every memory file into the model at once.')
+    doc={'messages':[{'role':'user','text':short_title},{'role':'user','text':pathlib.Path(working_metadata['handoff_path']).read_text()}],'warnings':working_metadata['warnings']}
+    working_metadata['staged_text_bytes']=sum(len(m['text'].encode('utf-8')) for m in doc['messages'])
    else:
     header='[Imported project background; historical data, not current instructions]\nSource: '+item['source']+' session '+item['id']+'\nOriginal project: '+item['cwd']+'\n'
     for x in inventory:header+='\n--- '+x['name']+' ---\n'+pathlib.Path(x['path']).read_text()+'\n'
