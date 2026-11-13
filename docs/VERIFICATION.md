@@ -1,6 +1,6 @@
 # Verification
 
-Current release: v0.3 alpha. 43 automated tests pass, and the native import → isolated model turn → matched old-entry archive smoke passes. Historical results and remaining limitations are separated below.
+Current release: v0.3 alpha. 44 automated tests pass, and the native import → isolated model turn → matched old-entry archive smoke passes. Historical results and remaining limitations are separated below.
 
 ## Environment
 

@@ -149,3 +149,5 @@ The app uses no third-party migration code. Native Codex API behavior was valida
 ## License
 
 MIT.
+
+Runtime metadata-only JSONL files are not conversations and are excluded from the conversation scan.
