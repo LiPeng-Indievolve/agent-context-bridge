@@ -6,14 +6,14 @@ Local execution on macOS with Python 3.11 and Codex CLI 0.162.1. No Claude model
 
 ## Verified
 
-- Unit/regression tests for scanning, portable message roundtrips, repeated API message IDs, non-object and malformed JSONL records, sidechain/branch loss warnings, native pagination cursor handling, completion notification ordering, idempotence and rollback hash conflicts.
+- 17 passing unit/regression tests for scanning, portable message roundtrips, repeated API message IDs, non-object and malformed JSONL records, sidechain/branch loss warnings, native pagination cursor handling, completion notification ordering, idempotence and rollback hash conflicts.
 - Isolated synthetic Claude→Codex native import returned completed with no import failures. Native thread read recovered both conversation text and project background.
 - Exported that Codex conversation back into a fresh Claude native JSONL session and read back its messages and background.
 - Repeated identical native transfer skipped duplicate creation.
 - Claude rollback removed only its unchanged generated file. Codex rollback archived the synthetic imported thread.
 - Browser: loaded local UI, scanned two synthetic conversations, selected both and displayed dry-run previews with context and loss warnings.
 - HTTP checks: missing token and cross-origin requests rejected; authenticated same-origin scan succeeded.
-- Compile, packaging and CLI entry point checks run before release.
+- Python compile passed; wheel built and installed into an isolated virtualenv; installed `agent-bridge --help` passed.
 
 ## Native compatibility findings
 
