@@ -26,3 +26,8 @@ class BridgeTests(unittest.TestCase):
   p=self.root/'source.jsonl';p.write_text(json.dumps({'type':'response_item','payload':{'type':'message','role':'user','content':[{'type':'input_text','text':'x'}]}}));item={'source':'codex','id':'cx1','path':str(p),'cwd':str(self.cwd),'title':'test'};e=Engine(self.cc,self.cx,self.state);r=e.migrate(item,'claude',True);Path(r['target_path']).write_text('changed')
   with self.assertRaises(ValueError):e.rollback(r['migration_id'])
 if __name__=='__main__':unittest.main()
+
+class MetadataOnlyScanTests(unittest.TestCase):
+ def test_runtime_metadata_is_not_a_conversation(self):
+  with tempfile.TemporaryDirectory()as td:
+   root=Path(td);p=root/'cc/projects/project/empty.jsonl';p.parent.mkdir(parents=True);p.write_text(json.dumps({'type':'cost-state','cwd':str(root)})+'\n'+json.dumps({'type':'user','message':{'content':42}})+'\n');self.assertEqual(scan(root/'cc',root/'cx',[]),[])

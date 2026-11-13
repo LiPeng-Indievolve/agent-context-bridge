@@ -6,15 +6,18 @@ def scan(claude_home,codex_home,roots,include_observers=False):
  cc=pathlib.Path(claude_home).expanduser();cx=pathlib.Path(codex_home).expanduser();items=[];seen=set()
  for p in (cc/'projects').glob('*/*.jsonl'):
   if not include_observers and 'observer' in p.parent.name:continue
-  cwd='';title='';count=0
+  cwd='';title='';count=0;conversation=False
   try:
    for o in rows(p,[]):
     cwd=o.get('cwd') or cwd
+    message=o.get('message');content=message.get('content')if isinstance(message,dict)else None
+    if o.get('type')in('user','assistant')and not o.get('isSidechain')and isinstance(content,(str,list))and content:conversation=True
     if o.get('type')=='user':
-     v=blocks(o.get('message',{}).get('content'),[])
+     v=blocks(content,[])if isinstance(content,(str,list))else''
      if isinstance(v,str) and not v.startswith('<') and not title:title=v[:120].replace('\n',' ')
     count+=1
     if count>=60 and cwd and title:break
+   if not conversation:continue
    items.append({'source':'claude','id':p.stem,'path':str(p),'cwd':cwd,'title':title or p.stem,'bytes':p.stat().st_size,'updated':p.stat().st_mtime})
   except (OSError,ValueError):continue
  for db in sorted(cx.glob('state_*.sqlite'),key=lambda p:int(p.stem.split('_')[-1]) if p.stem.split('_')[-1].isdigit() else -1,reverse=True):

@@ -1,4 +1,6 @@
-# Verification — v0.1.0 alpha
+# Verification
+
+Current release: v0.3 alpha. 44 automated tests pass, and the native import → isolated model turn → matched old-entry archive smoke passes. Historical results and remaining limitations are separated below.
 
 ## Environment
 
@@ -40,3 +42,12 @@ Synthetic tests cover oversized tool output and memory, multilingual seeds, late
 The prior v0.1 synthetic native-import/read checks verified discoverability and conversion, not reliable continuation of multi-million-token histories. Those checks must not be presented as proof that an oversized session can resume a model turn. Actual model continuation evidence is recorded separately when run.
 
 A subsequent local rollout built 26 working sessions from real user histories using bounded private handoffs and verified a completed model turn for each (26/26). This is distinct from format-only tests. Session contents, project names and answer logs remain private and are not in this repository. The largest original history that had failed remote compaction was replaced by a bounded working session, with full history kept for retrieval.
+
+
+## v0.3 terminal switch regression
+
+Import discovery, a real model turn and finishing the switch are separate states. Synthetic regression tests cover zero exit without a completed turn, mismatched verification targets, busy writer hints, CLI success without persisted archive state, ambiguous native timestamps, stale migration attempts, custom CODEX_HOME quoting and custom-provider rejection. Verification disables executable tool/hook capabilities; the browser shares the same guarded operations.
+
+The matched old entry is archived through the native CLI and its archived state is then checked through read-only native catalog access. Source files and unrelated conversations are preserved. A full native/model integration test passed on synthetic data: a 639,554-byte source produced a 31,011-byte staged context, a real isolated model turn completed, the matched old entry was confirmed archived, and the source hash was unchanged. No private transcripts or credentials are published.
+
+Reproduce with `python3 tools/native_switch_smoke.py --allow-model-call` after signing into Codex. This explicit opt-in uses model quota, creates synthetic native sessions, then archives those test sessions; it never targets unrelated conversations.

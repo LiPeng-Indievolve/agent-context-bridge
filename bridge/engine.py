@@ -58,7 +58,11 @@ class Engine:
    key=f"{item['source']}:{item['id']}:{target}:{fingerprint}";records=self.journal()
    for r in records:
     if r['key']==key and r['status'] not in ('rolled_back','failed'):
-     return dict(r,status='already_migrated' if r['status']=='completed' else 'needs_recovery')
+     existing=dict(r,status='already_migrated' if r['status']=='completed' else 'needs_recovery')
+     if target=='codex':
+      from .switching import resume_command
+      existing['resume_command']=resume_command(r,self.cx);existing['ready_to_use']=(r.get('runtime_verification')or{}).get('status')=='passed';existing['next_step']='Exit old CLI windows with /exit before using resume_command. Run verify for a real model check, then finish-switch to preview old entries.'
+     return existing
    mid=str(uuid.uuid4());folder=self.state/'migrations'/mid;folder.mkdir(parents=True,mode=0o700)
    inventory=[]
    for n,p in files:
@@ -102,7 +106,11 @@ class Engine:
        try:staged.parent.rmdir()
        except OSError:pass
       elif staged.exists():r.setdefault('warnings',[]).append('Temporary Claude staging file changed; retained for manual inspection')
-    r['status']='completed';self.save(records);return r
+    r['status']='completed'
+    if target=='codex':
+     from .switching import resume_command
+     r['resume_command']=resume_command(r,self.cx);r['ready_to_use']=False;r['next_step']='Exit any old terminal agent with /exit, then run resume_command. Import completion is not a model-turn verification. Run agent-bridge verify MIGRATION_ID for an actual read-only model turn.'
+    self.save(records);return r
    except BaseException as e:
     r['error']=str(e);r['status']='needs_recovery' if target=='codex' else 'failed';self.save(records);raise
  def rollback(self,mid):
