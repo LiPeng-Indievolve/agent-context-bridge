@@ -4,7 +4,7 @@
 
 A local-first CLI and browser UI for carrying coding-agent conversations and project background between Claude Code and Codex. No runtime Python dependencies. No Claude account required to read existing local Claude Code histories.
 
-**Status: v0.1 alpha.** macOS and Linux, Python 3.11+. Codex transfers require a recent `codex` CLI with `externalAgentConfig/import` and `thread/items/list` support. Tested locally with Codex CLI 0.162.1. Windows is not supported yet.
+**Status: v0.2 alpha.** macOS and Linux, Python 3.11+. Codex transfers require a recent `codex` CLI with native import support. Paginated source histories also require `thread/items/list`; legacy histories use the verified full-read fallback. Tested locally with Codex CLI 0.162.1. Windows is not supported yet.
 
 ## Quick start / 快速开始
 
@@ -49,6 +49,9 @@ python3 -m bridge migrate --to claude --id CODEX_SESSION_ID --apply
 python3 -m bridge migrate --to codex --project /absolute/project/path --apply
 python3 -m bridge migrate --to codex --all             # dry-run preview
 python3 -m bridge migrate --to codex --all --apply     # all eligible sources
+python3 -m bridge migrate --to codex --id CLAUDE_SESSION_ID --full-history --apply  # archival only; can exceed model context
+python3 -m bridge prepare --source /path/to/session.jsonl --output /new/private/handoff
+python3 -m bridge search --index /new/private/handoff/search-index.jsonl --query "pending task"
 python3 -m bridge history
 python3 -m bridge rollback MIGRATION_ID
 ```
@@ -68,22 +71,31 @@ python3 -m bridge --claude-home /local/claude --codex-home /local/codex \
 
 | Content | Behavior |
 |---|---|
-| User / assistant text | Converted into the destination conversation |
-| Tool calls and results | Preserved as explicitly labelled historical text, not runnable native tool calls |
-| Project background | Copies project CLAUDE.md, AGENTS.md, README.md, HANDOVER.md and Claude project memory Markdown into a private bundle and prepends historical background to the conversation |
+| Claude → Codex (default) | <=48KB working context: latest compact summary and newest plain-text conversation, with latest user task reserved; full history retained in a private source archive + searchable line-number index |
+| Full archival replay (`--full-history`) | Opt-in conversion of portable historical messages; may exceed context limits and fail to resume |
+| Tool calls and results | Default working context excludes tools; raw source and offline search index retain them. Full-history mode labels them as historical text |
+| Project background | Copies project documents and Claude memory into a private bundle. Default CC → Codex links a private context index; relevant files can be read on demand, without loading every memory body into the model |
 | Modern Codex history | Reads paginated native items when supported; legacy-only native fallback; refuses unsupported paginated exports rather than silently truncating |
 | Images, attachments, private reasoning | Not replayed; unsupported blocks reported |
 | MCP, hooks, plugins, credentials | Not installed or migrated |
 | Project source code | Stays in its original directory; missing project directories cause an explicit error |
 | Global rules / config and inherited rules | Not migrated in this alpha |
 
-This is **portable context migration**, not a lossless clone of a running agent. Imported background is dated historical data; verify old deployment instructions against current code. Large histories may require the target agent to compact its context. Native formats and APIs can change.
+This is **portable context migration**, not a lossless clone of a running agent. Imported background is dated historical data; verify old deployment instructions against current code. Large histories must not be replayed into the model all at once. The default bounded working context keeps full history available for local retrieval. Do not assume compaction can rescue an oversized archival import. Native formats and APIs can change.
 
 ### Finding migrated conversations
 
 From the project directory, use Codex `/resume`, or `codex resume --all` to search across directories. The exact `codex resume ID` returned by a successful migration is the most reliable entry point. Native import also registers the conversation for desktop discovery, but version-specific desktop behavior should be checked on your installation.
 
 For Claude Code, the tool creates a new native JSONL session with a new UUID. Use `claude --resume ID` from the saved project directory. **Claude runtime continuation has not been verified in this release**; see the verification report. Existing Claude sessions are never edited.
+
+## Context-limit fix in v0.2
+
+v0.1 could import a large history and make it discoverable while the first model continuation failed with `context_window_exceeded`. A visible `/resume` entry alone is not evidence of a usable working session. v0.2 defaults Claude → Codex to a <=48KB UTF-8 working handoff, preserving full source history and searchable original line numbers locally. This is an extractive seed, not a guarantee that every old decision is already in the model context. Use the linked context index and offline search to retrieve more details as needed.
+
+`--full-history` is explicitly archival and can reproduce the v0.1 failure. Bounded and archival transfers have distinct journal fingerprints. Existing v0.1 imports are not silently modified: create a fresh default-mode migration to obtain a bounded working session.
+
+Private runtime state defaults to `~/.local/share/agent-context-bridge`, outside synced Documents/Desktop folders. Keep it there: cloud eviction of referenced archives can make later retrieval fail.
 
 ## Safety and recovery
 
@@ -106,7 +118,7 @@ See [verification](docs/VERIFICATION.md) for what was actually tested and its bo
 
 ## Design
 
-`scan.py` discovers native stores; `codec.py` normalizes portable messages; `rpc.py` reads/imports native Codex sessions; `engine.py` journals additive transfers and rollback; CLI and local UI share the same engine.
+`scan.py` discovers native stores; `codec.py` normalizes portable messages; `rpc.py` reads/imports native Codex sessions; `handoff.py` prepares bounded contexts and offline indexes; `engine.py` journals additive transfers and rollback; CLI and local UI share the same engine.
 
 The app uses no third-party migration code. Native Codex API behavior was validated locally. Contributions for version adapters, Windows support, attachment portability, and additional formats are welcome. Please use synthetic fixtures in bug reports; never attach private histories.
 

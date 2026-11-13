@@ -29,3 +29,14 @@ The native importer only discovers staged Claude sessions under the default `~/.
 - Images, private reasoning and agent internal execution state are not portable. Foreign tools are historical text.
 - Live ongoing conversations are not snapshotted transactionally. Stop writing to a source before migrating.
 - The earlier real user migration proved native desktop/CLI continuation, but it was a separate manual test before this utility was implemented; it is not claimed as an end-to-end real-data test of this release.
+
+
+## v0.2 context-window regression
+
+The default Claude → Codex path now constructs a UTF-8 handoff no larger than 49,152 bytes, including seed and source links. It prioritizes the latest compact summary and last user task; tool bodies are excluded from model input and retained in a local searchable source archive. Project memory bodies are linked through a private index rather than concatenated.
+
+Synthetic tests cover oversized tool output and memory, multilingual seeds, latest task retention, source-line retrieval, private permissions, empty-source errors, and distinct fingerprints for opt-in full-history archival replay. A stub native importer verifies default staged text <=48KB while the raw history archive remains intact. Full-history mode deliberately remains unbounded and may fail model continuation.
+
+The prior v0.1 synthetic native-import/read checks verified discoverability and conversion, not reliable continuation of multi-million-token histories. Those checks must not be presented as proof that an oversized session can resume a model turn. Actual model continuation evidence is recorded separately when run.
+
+A subsequent local rollout built 26 working sessions from real user histories using bounded private handoffs and verified a completed model turn for each (26/26). This is distinct from format-only tests. Session contents, project names and answer logs remain private and are not in this repository. The largest original history that had failed remote compaction was replaced by a bounded working session, with full history kept for retrieval.

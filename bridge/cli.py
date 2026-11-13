@@ -11,14 +11,22 @@ def main():
  p.add_argument('--include-observers',action='store_true')
  sub=p.add_subparsers(dest='command',required=True);sub.add_parser('scan');sub.add_parser('serve');sub.add_parser('history')
  for cmd in ['preview','migrate']:
-  q=sub.add_parser(cmd);q.add_argument('--to',required=True,choices=['claude','codex']);q.add_argument('--id',action='append',default=[]);q.add_argument('--project',action='append',default=[]);q.add_argument('--all',action='store_true');q.add_argument('--apply',action='store_true',help='Actually write; otherwise preview only')
+  q=sub.add_parser(cmd);q.add_argument('--to',required=True,choices=['claude','codex']);q.add_argument('--id',action='append',default=[]);q.add_argument('--project',action='append',default=[]);q.add_argument('--all',action='store_true');q.add_argument('--apply',action='store_true',help='Actually write; otherwise preview only');q.add_argument('--full-history',action='store_true',help='Archival full replay; may exceed model limits and fail to resume. Default CC to Codex uses bounded working context.')
+ q=sub.add_parser('prepare',help='Build a <=48KB working handoff and searchable local archive from Claude JSONL');q.add_argument('--source',required=True);q.add_argument('--output',required=True);q.add_argument('--seed',default='');q.add_argument('--max-bytes',type=int,default=48*1024)
+ q=sub.add_parser('search',help='Search a prepared offline index without loading the full history into a model');q.add_argument('--index',required=True);q.add_argument('--query',required=True);q.add_argument('--limit',type=int,default=20)
  q=sub.add_parser('rollback');q.add_argument('migration_id')
  a=p.parse_args();e=Engine(a.claude_home,a.codex_home,a.state_dir)
  try:
   if a.command=='serve':
    from .web import serve
    serve(a,e);return
-  if a.command=='history':result=e.journal()
+  if a.command=='prepare':
+   from .handoff import prepare
+   result=prepare(a.source,a.output,seed=a.seed,max_bytes=a.max_bytes)
+  elif a.command=='search':
+   from .handoff import search
+   result=search(a.index,a.query,limit=a.limit)
+  elif a.command=='history':result=e.journal()
   elif a.command=='rollback':result=e.rollback(a.migration_id)
   else:
    items=scan(a.claude_home,a.codex_home,a.root,a.include_observers)
@@ -26,11 +34,10 @@ def main():
    else:
     selected=[x for x in items if x['source']!=a.to and (a.all or x['id'] in a.id or x['cwd'] in a.project)]
     if not selected:raise ValueError('Nothing selected: use --id, --project or --all')
-    # A project already represented by chats needs no extra empty workspace chat.
     represented={x['cwd'] for x in selected if x['source']!='workspace'};selected=[x for x in selected if x['source']!='workspace' or x['cwd'] not in represented]
     result=[]
     for item in selected:
-     try:result.append(e.migrate(item,a.to,a.command=='migrate' and a.apply))
+     try:result.append(e.migrate(item,a.to,a.command=='migrate' and a.apply,full_history=a.full_history))
      except Exception as exc:result.append({'id':item['id'],'status':'failed','error':str(exc)})
   print(json.dumps(result,ensure_ascii=False,indent=2))
   if isinstance(result,list) and any(r.get('status')=='failed' for r in result):sys.exit(1)

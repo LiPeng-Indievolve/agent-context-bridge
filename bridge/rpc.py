@@ -13,7 +13,7 @@ class RPC:
    finally:self.events.put(None)
   threading.Thread(target=pump,daemon=True).start()
   try:
-   self.call('initialize',{'clientInfo':{'name':'agent_context_bridge','version':'0.1.0'},'capabilities':{'experimentalApi':True}});self.send({'method':'initialized'})
+   self.call('initialize',{'clientInfo':{'name':'agent_context_bridge','version':'0.2.0'},'capabilities':{'experimentalApi':True}});self.send({'method':'initialized'})
   except BaseException:self.close();raise
  def send(self,o):self.p.stdin.write(json.dumps(o)+'\n');self.p.stdin.flush()
  def receive(self,deadline):
