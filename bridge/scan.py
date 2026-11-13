@@ -13,7 +13,7 @@ def scan(claude_home,codex_home,roots,include_observers=False):
     message=o.get('message');content=message.get('content')if isinstance(message,dict)else None
     if o.get('type')in('user','assistant')and not o.get('isSidechain')and isinstance(content,(str,list))and content:conversation=True
     if o.get('type')=='user':
-     v=blocks(content,[])
+     v=blocks(content,[])if isinstance(content,(str,list))else''
      if isinstance(v,str) and not v.startswith('<') and not title:title=v[:120].replace('\n',' ')
     count+=1
     if count>=60 and cwd and title:break

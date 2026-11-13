@@ -30,4 +30,4 @@ if __name__=='__main__':unittest.main()
 class MetadataOnlyScanTests(unittest.TestCase):
  def test_runtime_metadata_is_not_a_conversation(self):
   with tempfile.TemporaryDirectory()as td:
-   root=Path(td);p=root/'cc/projects/project/empty.jsonl';p.parent.mkdir(parents=True);p.write_text(json.dumps({'type':'cost-state','cwd':str(root)})+'\n');self.assertEqual(scan(root/'cc',root/'cx',[]),[])
+   root=Path(td);p=root/'cc/projects/project/empty.jsonl';p.parent.mkdir(parents=True);p.write_text(json.dumps({'type':'cost-state','cwd':str(root)})+'\n'+json.dumps({'type':'user','message':{'content':42}})+'\n');self.assertEqual(scan(root/'cc',root/'cx',[]),[])
